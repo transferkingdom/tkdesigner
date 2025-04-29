@@ -6,6 +6,7 @@ import { EditorControls } from './EditorControls';
 // Add this to make TypeScript happy with the window.picsart object
 declare global {
   interface Window {
+    Picsart: any;
     picsart: {
       createEditor: (config: EditorConfig) => PicsartEditor;
     };
@@ -47,15 +48,25 @@ export const PicsartEditor = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!window.picsart) {
+    // Use the new Picsart SDK approach
+    const loadEditor = () => {
       const script = document.createElement('script');
-      script.src = 'https://sdk.picsart.io/cdn?v=1.0.0&key=sdk';
+      script.src = 'https://sdk.picsart.io/cdn?key=sdk';
       script.async = true;
-      script.onload = initEditor;
+      script.onload = () => {
+        // Try to use the new API format first
+        if (window.Picsart) {
+          initNewEditor();
+        } else if (window.picsart) {
+          initEditor();
+        } else {
+          console.error('Picsart SDK failed to load properly');
+        }
+      };
       document.body.appendChild(script);
-    } else {
-      initEditor();
-    }
+    };
+
+    loadEditor();
 
     return () => {
       if (editorInstance) {
@@ -64,30 +75,65 @@ export const PicsartEditor = () => {
     };
   }, [editorInstance]);
 
+  const initNewEditor = () => {
+    if (!editorRef.current) return;
+
+    try {
+      // New SDK format
+      const PicsartInstance = new window.Picsart({
+        propertyId: 'tkdesigner', 
+        containerId: editorRef.current.id || 'editor-container',
+        apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
+      });
+
+      // Set a unique ID for the editor container if not already set
+      if (!editorRef.current.id) {
+        editorRef.current.id = 'editor-container';
+      }
+
+      PicsartInstance.onOpen(() => {
+        console.log('Editor is open');
+        setIsLoading(false);
+        setEditorInstance(PicsartInstance);
+      });
+
+      PicsartInstance.open({
+        title: 'TK Designer'
+      });
+    } catch (error) {
+      console.error('Error initializing Picsart editor:', error);
+    }
+  };
+
   const initEditor = () => {
     if (!editorRef.current) return;
 
-    const editor = window.picsart.createEditor({
-      container: editorRef.current,
-      apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
-      theme: {
-        primaryColor: '#3B82F6',
-        secondaryColor: '#1E40AF',
-      },
-      ui: {
-        showHeader: true,
-        mode: 'advanced',
-      },
-      templates: {
-        show: true,
-        categories: ['tshirts', 'hoodies', 'custom'],
-      },
-      onReady: () => {
-        setEditorInstance(editor);
-        setIsLoading(false);
-      },
-      onSave: handleSaveDesign,
-    });
+    try {
+      // Old SDK format
+      const editor = window.picsart.createEditor({
+        container: editorRef.current,
+        apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
+        theme: {
+          primaryColor: '#3B82F6',
+          secondaryColor: '#1E40AF',
+        },
+        ui: {
+          showHeader: true,
+          mode: 'advanced',
+        },
+        templates: {
+          show: true,
+          categories: ['tshirts', 'hoodies', 'custom'],
+        },
+        onReady: () => {
+          setEditorInstance(editor);
+          setIsLoading(false);
+        },
+        onSave: handleSaveDesign,
+      });
+    } catch (error) {
+      console.error('Error initializing Picsart editor:', error);
+    }
   };
 
   const handleSaveDesign = async (design: Design) => {
