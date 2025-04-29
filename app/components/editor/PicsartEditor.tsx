@@ -22,17 +22,22 @@ interface PicsartConfig {
   debug?: boolean;
 }
 
+interface ExportOutput {
+  data: {
+    imageData?: string;
+    pdfData?: string;
+    printData?: string;
+    previewPdfData?: string;
+    replayData?: string;
+  };
+}
+
 interface PicsartInstance {
   open: (options?: { title?: string }) => void;
   close: () => void;
   onOpen: (callback: () => void) => void;
-  onExport: (callback: (output: any) => void) => void;
+  onExport: (callback: (output: ExportOutput) => void) => void;
   export: (options: { format: string; quality: number; transparent: boolean }) => Promise<string>;
-}
-
-interface Design {
-  id: string;
-  [key: string]: unknown;
 }
 
 export const PicsartEditor = () => {
@@ -59,6 +64,7 @@ export const PicsartEditor = () => {
         containerId: containerRef.current.id,
         apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
         accessibilityTitle: 'TK Designer',
+        debug: true // Enable debug mode to see more logs
       });
 
       // Setup event handlers
@@ -66,6 +72,12 @@ export const PicsartEditor = () => {
         console.log('Picsart editor is ready');
         setIsLoading(false);
         setEditorInstance(picsartInstance);
+      });
+
+      // Handle export events
+      picsartInstance.onExport((output) => {
+        console.log('Export complete:', output);
+        // Handle export data here
       });
 
       // Open the editor
@@ -88,9 +100,13 @@ export const PicsartEditor = () => {
 
       const script = document.createElement('script');
       script.id = 'picsart-sdk-script';
-      script.src = 'https://sdk.picsart.io/cdn?v=1.0.0&key=sdk';
+      script.src = 'https://sdk.picsart.io/cdn?v=1.0.0&key=test';
       script.async = true;
       script.onload = initEditor;
+      script.onerror = (error) => {
+        console.error('Failed to load Picsart SDK:', error);
+        setIsLoading(false);
+      };
       document.head.appendChild(script);
     };
 
@@ -102,16 +118,6 @@ export const PicsartEditor = () => {
       }
     };
   }, [editorInstance, initEditor]);
-
-  const handleSaveDesign = async (design: Design) => {
-    // Here we'll implement the integration with Shopify
-    console.log('Design saved:', design);
-    
-    // This will be implemented later:
-    // 1. Export the design as high-quality PNG
-    // 2. Create a custom product variant in Shopify
-    // 3. Redirect to the product page
-  };
 
   return (
     <div className="w-full h-screen bg-white">
