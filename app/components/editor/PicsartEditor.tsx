@@ -49,7 +49,7 @@ export const PicsartEditor = () => {
   useEffect(() => {
     if (!window.picsart) {
       const script = document.createElement('script');
-      script.src = 'https://sdk.picsart.io/editor.js';
+      script.src = 'https://sdk.picsart.io/cdn?v=1.0.0&key=sdk';
       script.async = true;
       script.onload = initEditor;
       document.body.appendChild(script);
