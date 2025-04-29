@@ -6,13 +6,44 @@ import { EditorControls } from './EditorControls';
 // Add this to make TypeScript happy with the window.picsart object
 declare global {
   interface Window {
-    picsart: any;
+    picsart: {
+      createEditor: (config: EditorConfig) => PicsartEditor;
+    };
   }
+}
+
+interface EditorConfig {
+  container: HTMLDivElement;
+  apiKey: string;
+  theme: {
+    primaryColor: string;
+    secondaryColor: string;
+  };
+  ui: {
+    showHeader: boolean;
+    mode: string;
+  };
+  templates: {
+    show: boolean;
+    categories: string[];
+  };
+  onReady: () => void;
+  onSave: (design: Design) => void;
+}
+
+interface PicsartEditor {
+  close: () => void;
+  export: (options: { format: string; quality: number; transparent: boolean }) => Promise<string>;
+}
+
+interface Design {
+  id: string;
+  [key: string]: unknown;
 }
 
 export const PicsartEditor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [editorInstance, setEditorInstance] = useState<any>(null);
+  const [editorInstance, setEditorInstance] = useState<PicsartEditor | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -31,7 +62,7 @@ export const PicsartEditor = () => {
         editorInstance.close();
       }
     };
-  }, []);
+  }, [editorInstance]);
 
   const initEditor = () => {
     if (!editorRef.current) return;
@@ -59,7 +90,7 @@ export const PicsartEditor = () => {
     });
   };
 
-  const handleSaveDesign = async (design: any) => {
+  const handleSaveDesign = async (design: Design) => {
     // Here we'll implement the integration with Shopify
     console.log('Design saved:', design);
     

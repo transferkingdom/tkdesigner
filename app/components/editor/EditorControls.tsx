@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface EditorControlsProps {
-  editor: any; // Picsart Editor instance
+  editor: {
+    export: (options: { format: string; quality: number; transparent: boolean }) => Promise<string>;
+  };
 }
 
 interface ProductOptions {
@@ -14,7 +15,6 @@ interface ProductOptions {
 }
 
 export const EditorControls = ({ editor }: EditorControlsProps) => {
-  const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
   const [productOptions, setProductOptions] = useState<ProductOptions>({
     size: 'Medium',
@@ -51,7 +51,7 @@ export const EditorControls = ({ editor }: EditorControlsProps) => {
     }
   };
 
-  const handleOptionChange = (option: keyof ProductOptions, value: any) => {
+  const handleOptionChange = (option: keyof ProductOptions, value: string | number) => {
     setProductOptions((prev) => ({
       ...prev,
       [option]: value,
