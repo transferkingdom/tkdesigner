@@ -44,11 +44,15 @@ export const PicsartEditor = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [editorInstance, setEditorInstance] = useState<PicsartInstance | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<boolean>(false);
+  const [isMockEditor, setIsMockEditor] = useState<boolean>(false);
 
   // Use useCallback to memoize the initEditor function
   const initEditor = useCallback(() => {
     if (!containerRef.current || !window.Picsart) {
       console.error('Container ref is not available or Picsart SDK not loaded');
+      setLoadError(true);
+      setIsLoading(false);
       return;
     }
 
@@ -62,10 +66,19 @@ export const PicsartEditor = () => {
       const picsartInstance = new window.Picsart({
         propertyId: 'tkdesigner',
         containerId: containerRef.current.id,
-        apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
+        apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
         accessibilityTitle: 'TK Designer',
-        debug: true // Enable debug mode to see more logs
+        debug: true, // Enable debug mode to see more logs
+        usePicsartInventory: true // Enable Picsart inventory
       });
+
+      // Add error handling for API key
+      if (!process.env.NEXT_PUBLIC_PICSART_API_KEY) {
+        console.error('Picsart API key is missing');
+        setLoadError(true);
+        setIsLoading(false);
+        return;
+      }
 
       // Setup event handlers
       picsartInstance.onOpen(() => {
@@ -86,7 +99,17 @@ export const PicsartEditor = () => {
       });
     } catch (error) {
       console.error('Error initializing Picsart editor:', error);
+      setLoadError(true);
+      setIsLoading(false);
+      setIsMockEditor(true);
     }
+  }, []);
+
+  // This function will enable a mock editor mode when the SDK fails to load
+  const enableMockEditorMode = useCallback(() => {
+    console.log('Enabling mock editor mode for UI testing');
+    setIsMockEditor(true);
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -100,14 +123,35 @@ export const PicsartEditor = () => {
 
       const script = document.createElement('script');
       script.id = 'picsart-sdk-script';
+      
+      // You can try different keys: 'test', your actual API key, etc.
       script.src = 'https://sdk.picsart.io/cdn?v=1.0.0&key=test';
+      
       script.async = true;
-      script.onload = initEditor;
+      script.onload = () => {
+        if (window.Picsart) {
+          initEditor();
+        } else {
+          console.error('Picsart SDK failed to initialize');
+          enableMockEditorMode();
+        }
+      };
       script.onerror = (error) => {
         console.error('Failed to load Picsart SDK:', error);
-        setIsLoading(false);
+        enableMockEditorMode();
       };
+      
+      // Set a timeout in case the script hangs
+      const timeoutId = setTimeout(() => {
+        if (isLoading) {
+          console.error('Picsart SDK load timeout');
+          enableMockEditorMode();
+        }
+      }, 5000);
+
       document.head.appendChild(script);
+
+      return () => clearTimeout(timeoutId);
     };
 
     loadPicsartSDK();
@@ -117,7 +161,41 @@ export const PicsartEditor = () => {
         editorInstance.close();
       }
     };
-  }, [editorInstance, initEditor]);
+  }, [editorInstance, initEditor, enableMockEditorMode, isLoading]);
+
+  // Render a mock editor UI for testing when the SDK fails to load
+  const renderMockEditor = () => {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100">
+        <div className="border-b border-gray-200 w-full p-4 bg-white flex justify-between items-center">
+          <h1 className="text-xl font-bold">TK Designer</h1>
+          <button className="bg-blue-500 text-white px-4 py-2 rounded-md">Save</button>
+        </div>
+        <div className="flex-1 flex">
+          <div className="w-64 bg-white border-r border-gray-200 p-4">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold mb-2">Tools</h2>
+              <div className="grid grid-cols-3 gap-2">
+                {['Text', 'Shape', 'Image', 'Background', 'Upload', 'Templates'].map((tool) => (
+                  <div key={tool} className="flex flex-col items-center">
+                    <div className="w-10 h-10 bg-gray-200 rounded-md mb-1"></div>
+                    <span className="text-xs">{tool}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 bg-gray-50 flex items-center justify-center">
+            <div className="w-[500px] h-[500px] bg-white border border-gray-300 shadow-md">
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                Canvas Area (API connection required)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full h-screen bg-white">
@@ -126,13 +204,41 @@ export const PicsartEditor = () => {
           <div className="text-xl">Loading Editor...</div>
         </div>
       )}
+      
+      {loadError && !isMockEditor && (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-xl text-red-500 mb-4">Error loading editor</div>
+          <p className="mb-4">The Picsart SDK failed to load properly. This may be due to:</p>
+          <ul className="list-disc pl-8 mb-4">
+            <li>Missing or invalid API key</li>
+            <li>Network connectivity issues</li>
+            <li>The Picsart service may be temporarily unavailable</li>
+          </ul>
+          <button 
+            onClick={() => setIsMockEditor(true)} 
+            className="bg-blue-500 text-white px-4 py-2 rounded-md"
+          >
+            Show Demo UI
+          </button>
+        </div>
+      )}
+      
       <div 
         ref={containerRef} 
         id="picsart-editor-container" 
-        className="w-full h-full" 
+        className={`w-full h-full ${(loadError || isMockEditor) ? 'hidden' : ''}`}
         style={{ minWidth: '768px', minHeight: '350px' }}
       />
+      
+      {isMockEditor && renderMockEditor()}
+      
       {editorInstance && <EditorControls editor={editorInstance} />}
+      {isMockEditor && <EditorControls editor={{
+        export: async () => {
+          alert('This is a demo mode. Export functionality requires a valid Picsart API connection.');
+          return '';
+        }
+      }} />}
     </div>
   );
 };
