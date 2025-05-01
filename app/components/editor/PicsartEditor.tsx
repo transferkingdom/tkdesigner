@@ -105,27 +105,52 @@ const PicsartEditor = () => {
           script.async = true;
           script.defer = true;
           script.crossOrigin = 'anonymous';
-          script.integrity = 'sha384-'; // Unpkg'den integrity değerini almalısınız
-          script.referrerPolicy = 'no-referrer';
+          script.type = 'text/javascript';
           
+          const timeoutId = setTimeout(() => {
+            console.error('SDK loading timeout');
+            reject(new Error('SDK loading timeout after 10s'));
+          }, 10000);
+
           script.onload = () => {
+            clearTimeout(timeoutId);
             console.log('SDK script loaded successfully');
-            if ((window as unknown as PicsartWindow).Picsart) {
-              resolve();
-            } else {
-              console.error('SDK loaded but Picsart object not found');
-              reject(new Error('SDK loaded but Picsart object not found'));
-            }
+            
+            // SDK yüklendikten sonra kısa bir bekleme
+            setTimeout(() => {
+              if ((window as unknown as PicsartWindow).Picsart) {
+                console.log('Picsart object found in window');
+                resolve();
+              } else {
+                console.error('SDK loaded but Picsart object not found in window');
+                reject(new Error('SDK loaded but Picsart object not found'));
+              }
+            }, 500);
           };
           
-          script.onerror = (error) => {
-            console.error('Failed to load SDK script. Details:', {
-              error,
-              url: SDK_URL,
-              windowPicsart: !!(window as unknown as PicsartWindow).Picsart
-            });
+          script.onerror = async (error) => {
+            clearTimeout(timeoutId);
+            try {
+              const response = await fetch(SDK_URL);
+              const errorDetails = await response.text();
+              console.error('Failed to load SDK script. Details:', {
+                error,
+                response: errorDetails,
+                status: response.status,
+                headers: Object.fromEntries(response.headers),
+                url: SDK_URL
+              });
+            } catch (fetchError) {
+              console.error('Error fetching SDK error details:', fetchError);
+            }
             reject(new Error('Failed to load Picsart SDK'));
           };
+
+          // Remove any existing SDK script
+          const existingScript = document.querySelector(`script[src="${SDK_URL}"]`);
+          if (existingScript) {
+            existingScript.remove();
+          }
 
           document.head.appendChild(script);
         } catch (error) {
