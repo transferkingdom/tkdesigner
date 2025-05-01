@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { EditorControls } from './EditorControls';
 
 // Types
 interface PicsartSDK {
@@ -79,7 +78,8 @@ interface OpenOptions {
   quality?: number;
 }
 
-const SDK_URL = 'https://sdk.picsart.io/cdn?v=1.0.0&key=sdk';
+const SDK_URL = 'https://sdk.picsart.io/cdn?v=1.12.4&key=sdk';
+const CONTAINER_ID = 'picsart-editor-container';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
@@ -102,8 +102,14 @@ const PicsartEditor = () => {
         script.src = SDK_URL;
         script.async = true;
         script.crossOrigin = 'anonymous';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load Picsart SDK'));
+        script.onload = () => {
+          console.log('SDK script loaded successfully');
+          resolve();
+        };
+        script.onerror = (error) => {
+          console.error('Failed to load SDK script:', error);
+          reject(new Error(`Failed to load Picsart SDK: ${error}`));
+        };
         document.head.appendChild(script);
       });
     };
@@ -124,14 +130,14 @@ const PicsartEditor = () => {
         console.log('API Key available:', !!apiKey);
 
         // Container ID'sini ayarla
-        if (!currentEditorRef?.id) {
-          currentEditorRef!.id = 'picsart-editor';
+        if (currentEditorRef && !currentEditorRef.id) {
+          currentEditorRef.id = CONTAINER_ID;
         }
 
         // Editor ayarları
         const editorSettings: PicsartConfig = {
           propertyId: 'tkdesigner',
-          containerId: currentEditorRef!.id,
+          containerId: CONTAINER_ID,
           apiKey,
           accessibilityTitle: 'TK Designer',
           debug: true,
@@ -253,7 +259,8 @@ const PicsartEditor = () => {
         ref={editorRef} 
         className="w-full flex-1"
         style={{ 
-          minHeight: 'calc(100vh - 60px)',
+          minWidth: '768px',
+          minHeight: '350px',
           height: 'calc(100vh - 60px)',
           position: 'relative',
           overflow: 'hidden'
