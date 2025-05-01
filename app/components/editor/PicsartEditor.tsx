@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorControls } from './EditorControls';
 
 // Define proper types for the Picsart SDK
@@ -87,287 +87,166 @@ interface PicsartInstance {
   export: (options: { format: string; quality: number; transparent: boolean }) => Promise<string>;
 }
 
-export const PicsartEditor = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [editorInstance, setEditorInstance] = useState<PicsartInstance | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<boolean>(false);
-  const [isMockEditor, setIsMockEditor] = useState<boolean>(false);
-  const [retryCount, setRetryCount] = useState<number>(0);
-  const MAX_RETRIES = 3;
-  const INITIAL_RETRY_DELAY = 2000;
-
-  // This function will enable a mock editor mode when the SDK fails to load
-  const enableMockEditorMode = useCallback(() => {
-    console.log('Enabling mock editor mode for UI testing');
-    setIsMockEditor(true);
-    setIsLoading(false);
-  }, []);
-
-  const initializeEditor = useCallback(async () => {
-    if (!containerRef.current || !window.Picsart) {
-      console.error('Container ref is not available or Picsart SDK not loaded');
-      setLoadError(true);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Set a unique ID for the container
-      if (!containerRef.current.id) {
-        containerRef.current.id = 'picsart-editor-container';
-      }
-
-      // Debug API key
-      const apiKey = process.env.NEXT_PUBLIC_PICSART_API_KEY;
-      console.log('API Key available:', !!apiKey);
-
-      if (!apiKey) {
-        console.error('Picsart API key is missing');
-        setLoadError(true);
-        setIsLoading(false);
-        return;
-      }
-
-      // Create Picsart instance according to documentation
-      const picsartInstance = new window.Picsart({
-        propertyId: 'tkdesigner',
-        containerId: containerRef.current.id,
-        apiKey,
-        accessibilityTitle: 'TK Designer',
-        debug: true,
-        usePicsartInventory: true,
-        exportFormats: ['image/png', 'image/jpeg'],
-        exportType: 'blob',
-        mode: 'image',
-        theme: 'light',
-        userAgent: 'TKDesigner/1.0',
-        origin: window.location.origin,
-        domain: window.location.hostname,
-        analytics: false,
-        features: {
-          undoRedoControls: true,
-          zoomControls: true,
-          tools: [
-            'effects',
-            'eraser',
-            'duplicate',
-            'adjust',
-            'edit',
-            'color',
-            'gradient',
-            'font',
-            'border',
-            'outline',
-            'shadow',
-            'crop',
-            'flip_rotate',
-            'position',
-            'tool_removeBG'
-          ],
-        },
-        categories: {
-          templates: {},
-          photos: {
-            thumbnailHeader: false,
-          },
-          text: {
-            title: false,
-          },
-          uploads: {
-            title: false,
-          },
-          elements: {
-            smallTitle: true,
-          },
-          background: {
-            header: false,
-            tabs: ['Color']
-          },
-        },
-        branding: {
-          accents: '#eec443',
-          hover: '#eed792',
-          main: '#1f3b5e',
-          texts: '#ffffff',
-          background: '#0a1e37',
-        }
-      });
-
-      // Setup event handlers
-      picsartInstance.onOpen(() => {
-        console.log('Picsart editor is ready');
-        setIsLoading(false);
-        setEditorInstance(picsartInstance);
-      });
-
-      // Handle export events
-      picsartInstance.onExport((output) => {
-        console.log('Export complete:', output);
-        if (output.data.imageData) {
-          const blob = new Blob([output.data.imageData], { type: 'image/png' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'edited-image.png';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-      });
-
-      // Open the editor with specific configuration
-      picsartInstance.open({
-        title: 'TK Designer',
-        theme: 'light',
-        quality: 90
-      });
-    } catch (error) {
-      console.error('Error initializing Picsart editor:', error);
-      throw error;
-    }
-  }, []);
-
-  const initializeWithRetry = useCallback(async () => {
-    if (retryCount >= MAX_RETRIES) {
-      console.error('Max retries reached, enabling mock editor');
-      enableMockEditorMode();
-      return;
-    }
-
-    try {
-      await initializeEditor();
-    } catch (error) {
-      console.error('Error initializing editor, retrying...', error);
-      setRetryCount(prev => prev + 1);
-      setTimeout(() => {
-        initializeWithRetry();
-      }, INITIAL_RETRY_DELAY * Math.pow(2, retryCount));
-    }
-  }, [retryCount, enableMockEditorMode, initializeEditor, MAX_RETRIES, INITIAL_RETRY_DELAY]);
+const PicsartEditor = () => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    let checkInterval: NodeJS.Timeout;
-
-    const waitForSDK = () => {
-      console.log('Waiting for Picsart SDK to load...');
-      
-      checkInterval = setInterval(() => {
+    const initEditor = async () => {
+      try {
+        setIsLoading(true);
         console.log('Checking if SDK is loaded...');
-        if (window.Picsart) {
-          console.log('Picsart SDK loaded successfully');
-          clearInterval(checkInterval);
-          clearTimeout(timeoutId);
-          initializeWithRetry();
+
+        // SDK yükleme kontrolü
+        if (!(window as any).Picsart) {
+          const script = document.createElement('script');
+          script.src = 'https://sdk.picsart.io/1.12.4/sdk/picsart.js';
+          script.async = true;
+          document.body.appendChild(script);
+
+          await new Promise((resolve) => {
+            script.onload = resolve;
+          });
         }
-      }, 2000);
 
-      timeoutId = setTimeout(() => {
-        clearInterval(checkInterval);
-        console.error('Picsart SDK failed to load after timeout');
-        enableMockEditorMode();
-      }, 30000);
-    };
+        console.log('Picsart SDK loaded successfully');
 
-    waitForSDK();
+        // API Key kontrolü
+        const apiKey = process.env.NEXT_PUBLIC_PICSART_API_KEY;
+        if (!apiKey) {
+          throw new Error('API Key not found');
+        }
+        console.log('API Key available:', !!apiKey);
 
-    return () => {
-      clearInterval(checkInterval);
-      clearTimeout(timeoutId);
-      if (editorInstance) {
-        editorInstance.close();
+        // Editor ayarları
+        const editorSettings = {
+          propertyId: 'tkdesigner',
+          containerId: editorRef.current?.id || 'picsart-editor',
+          apiKey,
+          accessibilityTitle: 'TK Designer',
+          debug: true,
+          usePicsartInventory: true,
+          exportFormats: ['image/png', 'image/jpeg'],
+          exportType: 'blob',
+          mode: 'image',
+          theme: 'light',
+          userAgent: 'TKDesigner/1.0',
+          origin: window.location.origin,
+          domain: window.location.hostname,
+          analytics: false,
+          features: {
+            undoRedoControls: true,
+            zoomControls: true,
+            tools: [
+              'effects',
+              'eraser',
+              'duplicate',
+              'adjust',
+              'edit',
+              'color',
+              'gradient',
+              'font',
+              'border',
+              'outline',
+              'shadow',
+              'crop',
+              'flip_rotate',
+              'position',
+              'tool_removeBG'
+            ],
+          },
+          categories: {
+            templates: {},
+            photos: {
+              thumbnailHeader: false,
+            },
+            text: {
+              title: false,
+            },
+            uploads: {
+              title: false,
+            },
+            elements: {
+              smallTitle: true,
+            },
+            background: {
+              header: false,
+              tabs: ['Color']
+            },
+          },
+          branding: {
+            accents: '#eec443',
+            hover: '#eed792',
+            main: '#1f3b5e',
+            texts: '#ffffff',
+            background: '#0a1e37',
+          }
+        };
+
+        // Editor başlatma
+        if ((window as any).Picsart) {
+          // Container ID'sini ayarla
+          if (!editorRef.current?.id) {
+            editorRef.current!.id = 'picsart-editor';
+          }
+
+          const editor = new (window as any).Picsart(editorSettings);
+
+          editor.onOpen(() => {
+            console.log('Editor loaded successfully');
+            setIsLoading(false);
+          });
+
+          editor.onError((error: any) => {
+            console.error('Editor error:', error);
+            if (retryCount < maxRetries) {
+              setRetryCount(prev => prev + 1);
+              initEditor();
+            }
+          });
+
+          editor.open({
+            title: 'TK Designer',
+            theme: 'light',
+            quality: 90
+          });
+        } else {
+          throw new Error('Picsart SDK not loaded properly');
+        }
+
+      } catch (error) {
+        console.error('Editor initialization error:', error);
+        if (retryCount < maxRetries) {
+          setRetryCount(prev => prev + 1);
+          setTimeout(initEditor, 1000 * (retryCount + 1));
+        }
       }
     };
-  }, [editorInstance, enableMockEditorMode, initializeWithRetry]);
 
-  // Render a mock editor UI for testing when the SDK fails to load
-  const renderMockEditor = () => {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100">
-        <div className="border-b border-gray-200 w-full p-4 bg-white flex justify-between items-center">
-          <h1 className="text-xl font-bold">TK Designer</h1>
-          <button className="bg-blue-500 text-white px-4 py-2 rounded-md">Save</button>
-        </div>
-        <div className="flex-1 flex">
-          <div className="w-64 bg-white border-r border-gray-200 p-4">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold mb-2">Tools</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {['Text', 'Shape', 'Image', 'Background', 'Upload', 'Templates'].map((tool) => (
-                  <div key={tool} className="flex flex-col items-center">
-                    <div className="w-10 h-10 bg-gray-200 rounded-md mb-1"></div>
-                    <span className="text-xs">{tool}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 bg-gray-50 flex items-center justify-center">
-            <div className="w-[500px] h-[500px] bg-white border border-gray-300 shadow-md">
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                Canvas Area (API connection required)
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+    initEditor();
+
+    return () => {
+      // Cleanup
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+      }
+    };
+  }, [retryCount]);
 
   return (
-    <div className="w-full h-screen bg-white">
+    <div className="relative w-full h-full min-h-screen">
       {isLoading && (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-xl">Loading Editor...</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
+          <div className="text-lg font-semibold">Editor yükleniyor...</div>
         </div>
       )}
-      
-      {loadError && !isMockEditor && (
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="text-xl text-red-500 mb-4">Error loading editor</div>
-          <p className="mb-4">The Picsart SDK failed to load properly. This may be due to:</p>
-          <ul className="list-disc pl-8 mb-4">
-            <li>Missing or invalid API key</li>
-            <li>Network connectivity issues</li>
-            <li>The Picsart service may be temporarily unavailable</li>
-          </ul>
-          <button 
-            onClick={() => setIsMockEditor(true)} 
-            className="bg-blue-500 text-white px-4 py-2 rounded-md"
-          >
-            Show Demo UI
-          </button>
-        </div>
-      )}
-      
       <div 
-        ref={containerRef} 
-        id="picsart-editor-container" 
-        className={`w-full h-full ${(loadError || isMockEditor) ? 'hidden' : ''}`}
-        style={{ 
-          minWidth: '768px', 
-          minHeight: '500px',
-          width: '100%',
-          height: '100vh',
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
+        ref={editorRef} 
+        className="w-full h-full"
+        style={{ minHeight: '100vh' }}
       />
-      
-      {isMockEditor && renderMockEditor()}
-      
-      {editorInstance && <EditorControls editor={editorInstance} />}
-      {isMockEditor && <EditorControls editor={{
-        export: async () => {
-          alert('This is a demo mode. Export functionality requires a valid Picsart API connection.');
-          return '';
-        }
-      }} />}
     </div>
   );
 };
