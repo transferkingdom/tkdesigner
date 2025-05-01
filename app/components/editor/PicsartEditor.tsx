@@ -124,34 +124,56 @@ export const PicsartEditor = () => {
       const script = document.createElement('script');
       script.id = 'picsart-sdk-script';
       
-      // You can try different keys: 'test', your actual API key, etc.
-      script.src = 'https://sdk.picsart.io/cdn?v=1.0.0&key=test';
+      // Update SDK URL with correct version and configuration
+      script.src = 'https://sdk.picsart.io/cdn?v=2.0.0';
       
+      script.crossOrigin = 'anonymous';
       script.async = true;
+
+      // Add cleanup and error prevention
+      let mounted = true;
+      
       script.onload = () => {
+        if (!mounted) return;
+        
         if (window.Picsart) {
-          initEditor();
+          try {
+            initEditor();
+          } catch (err) {
+            console.error('Editor initialization error:', err);
+            enableMockEditorMode();
+          }
         } else {
           console.error('Picsart SDK failed to initialize');
           enableMockEditorMode();
         }
       };
+      
       script.onerror = (error) => {
+        if (!mounted) return;
         console.error('Failed to load Picsart SDK:', error);
         enableMockEditorMode();
       };
       
-      // Set a timeout in case the script hangs
+      // Increase timeout for slower connections
       const timeoutId = setTimeout(() => {
+        if (!mounted) return;
         if (isLoading) {
           console.error('Picsart SDK load timeout');
           enableMockEditorMode();
         }
-      }, 5000);
+      }, 10000);
 
       document.head.appendChild(script);
 
-      return () => clearTimeout(timeoutId);
+      return () => {
+        mounted = false;
+        clearTimeout(timeoutId);
+        const existingScript = document.getElementById('picsart-sdk-script');
+        if (existingScript) {
+          existingScript.remove();
+        }
+      };
     };
 
     loadPicsartSDK();
