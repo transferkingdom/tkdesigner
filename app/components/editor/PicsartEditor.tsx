@@ -78,7 +78,7 @@ interface OpenOptions {
   quality?: number;
 }
 
-const SDK_URL = '/api/proxy/sdk';
+const SDK_URL = 'https://tkdesigner.tkweb.workers.dev/api/proxy/sdk';
 const CONTAINER_ID = 'picsart-editor-container';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
