@@ -1,14 +1,12 @@
 name = "tkdesigner"
+main = ".next/server/app/api/proxy/sdk/route.js"
 compatibility_date = "2025-05-01"
-workers_dev = true
-
-[site]
-bucket = ".next/static"
-entry-point = "app"
 
 [build]
 command = "npm run build"
-output_dir = ".next"
+
+[site]
+bucket = ".next"
 
 [env.production]
 routes = [
