@@ -24,6 +24,8 @@ interface PicsartConfig {
   exportType?: string;
   mode?: string;
   theme?: string;
+  domain?: string;
+  origin?: string;
   features?: {
     undoRedoControls?: boolean;
     zoomControls?: boolean;
@@ -127,6 +129,8 @@ export const PicsartEditor = () => {
           exportType: 'blob',
           mode: 'image',
           theme: 'light',
+          domain: 'tkdesigner-6coxr6244-kevins-projects-14973562.vercel.app',
+          origin: 'https://tkdesigner-6coxr6244-kevins-projects-14973562.vercel.app',
           features: {
             undoRedoControls: true,
             zoomControls: true,
@@ -210,8 +214,7 @@ export const PicsartEditor = () => {
         // Open the editor with specific configuration
         picsartInstance.open({
           title: 'TK Designer',
-          selectedTool: 'templates',
-          measurement: 'pixel',
+          theme: 'light',
           quality: 90
         });
       } catch (error) {
