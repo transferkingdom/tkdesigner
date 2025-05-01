@@ -117,11 +117,14 @@ export const PicsartEditor = () => {
           containerRef.current.id = 'picsart-editor-container';
         }
 
+        // Debug API key
+        console.log('API Key:', process.env.NEXT_PUBLIC_PICSART_API_KEY);
+
         // Create Picsart instance according to documentation
         const picsartInstance = new window.Picsart({
           propertyId: 'tkdesigner',
           containerId: containerRef.current.id,
-          apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
+          apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
           accessibilityTitle: 'TK Designer',
           debug: true,
           usePicsartInventory: true,
@@ -129,8 +132,6 @@ export const PicsartEditor = () => {
           exportType: 'blob',
           mode: 'image',
           theme: 'light',
-          domain: 'tkdesigner-6coxr6244-kevins-projects-14973562.vercel.app',
-          origin: 'https://tkdesigner-6coxr6244-kevins-projects-14973562.vercel.app',
           features: {
             undoRedoControls: true,
             zoomControls: true,
@@ -188,7 +189,7 @@ export const PicsartEditor = () => {
           return;
         }
 
-        // Setup event handlers
+        // Setup event handlers with error handling
         picsartInstance.onOpen(() => {
           console.log('Picsart editor is ready');
           setIsLoading(false);
@@ -211,12 +212,23 @@ export const PicsartEditor = () => {
           }
         });
 
-        // Open the editor with specific configuration
-        picsartInstance.open({
-          title: 'TK Designer',
-          theme: 'light',
-          quality: 90
-        });
+        // Open the editor with specific configuration and error handling
+        try {
+          picsartInstance.open({
+            title: 'TK Designer',
+            theme: 'light',
+            quality: 90,
+            onError: (error) => {
+              console.error('Error opening editor:', error);
+              setLoadError(true);
+              setIsLoading(false);
+            }
+          });
+        } catch (error) {
+          console.error('Error opening Picsart editor:', error);
+          setLoadError(true);
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error('Error initializing Picsart editor:', error);
         setLoadError(true);
