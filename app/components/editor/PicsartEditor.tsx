@@ -92,6 +92,9 @@ export const PicsartEditor = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [isMockEditor, setIsMockEditor] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const MAX_RETRIES = 3;
+  const INITIAL_RETRY_DELAY = 2000;
 
   // This function will enable a mock editor mode when the SDK fails to load
   const enableMockEditorMode = useCallback(() => {
@@ -100,11 +103,29 @@ export const PicsartEditor = () => {
     setIsLoading(false);
   }, []);
 
+  const initializeWithRetry = useCallback(async () => {
+    if (retryCount >= MAX_RETRIES) {
+      console.error('Max retries reached, enabling mock editor');
+      enableMockEditorMode();
+      return;
+    }
+
+    try {
+      await initializeEditor();
+    } catch (error) {
+      console.error('Error initializing editor, retrying...', error);
+      setRetryCount(prev => prev + 1);
+      setTimeout(() => {
+        initializeWithRetry();
+      }, INITIAL_RETRY_DELAY * Math.pow(2, retryCount)); // Exponential backoff
+    }
+  }, [retryCount, enableMockEditorMode]);
+
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let checkInterval: NodeJS.Timeout;
 
-    const initializeEditor = () => {
+    const initializeEditor = async () => {
       if (!containerRef.current || !window.Picsart) {
         console.error('Container ref is not available or Picsart SDK not loaded');
         setLoadError(true);
@@ -249,16 +270,16 @@ export const PicsartEditor = () => {
           console.log('Picsart SDK loaded successfully');
           clearInterval(checkInterval);
           clearTimeout(timeoutId);
-          initializeEditor();
+          initializeWithRetry();
         }
-      }, 1000);
+      }, 2000); // Increased interval to 2 seconds
 
       // Set timeout for SDK loading
       timeoutId = setTimeout(() => {
         clearInterval(checkInterval);
         console.error('Picsart SDK failed to load after timeout');
         enableMockEditorMode();
-      }, 20000); // Increased timeout to 20 seconds
+      }, 30000); // Increased timeout to 30 seconds
     };
 
     waitForSDK();
@@ -270,7 +291,7 @@ export const PicsartEditor = () => {
         editorInstance.close();
       }
     };
-  }, [editorInstance, enableMockEditorMode]);
+  }, [editorInstance, enableMockEditorMode, initializeWithRetry]);
 
   // Render a mock editor UI for testing when the SDK fails to load
   const renderMockEditor = () => {

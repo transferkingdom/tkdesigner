@@ -15,7 +15,7 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'X-Requested-With, Content-Type, Authorization, Accept'
+            value: 'X-Requested-With, Content-Type, Authorization, Accept, X-Picsart-Correlation-Id'
           },
           {
             key: 'Accept',
@@ -24,6 +24,10 @@ const nextConfig = {
           {
             key: 'User-Agent',
             value: 'TKDesigner/1.0'
+          },
+          {
+            key: 'X-Picsart-Client-Version',
+            value: '1.12.4'
           }
         ]
       }
