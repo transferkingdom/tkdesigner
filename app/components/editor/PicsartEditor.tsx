@@ -32,7 +32,7 @@ interface PicsartConfig {
     tools?: string[];
   };
   categories?: {
-    templates?: {};
+    templates?: Record<string, unknown>;
     photos?: {
       thumbnailHeader?: boolean;
     };
