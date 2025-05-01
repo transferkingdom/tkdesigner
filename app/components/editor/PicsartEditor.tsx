@@ -32,8 +32,16 @@ interface ExportOutput {
   };
 }
 
+interface OpenOptions {
+  title?: string;
+  theme?: 'light' | 'dark';
+  quality?: number;
+  exportFormats?: string[];
+  onError?: (error: Error) => void;
+}
+
 interface PicsartInstance {
-  open: (options?: { title?: string }) => void;
+  open: (options?: OpenOptions) => void;
   close: () => void;
   onOpen: (callback: () => void) => void;
   onExport: (callback: (output: ExportOutput) => void) => void;
@@ -157,7 +165,7 @@ export const PicsartEditor = () => {
               theme: 'light',
               quality: 90,
               exportFormats: ['image/png', 'image/jpeg'],
-              onError: (error) => {
+              onError: (error: Error) => {
                 console.error('Editor error:', error);
                 enableMockEditorMode();
               }
