@@ -1,0 +1,20 @@
+name = "tkdesigner"
+compatibility_date = "2025-05-01"
+workers_dev = true
+
+[site]
+bucket = ".next/static"
+entry-point = "app"
+
+[build]
+command = "npm run build"
+output_dir = ".next"
+
+[env.production]
+routes = [
+  { pattern = "tkdesigner.tkweb.workers.dev", custom_domain = true }
+]
+
+[[assets]]
+directory = ".next"
+include = ["**/*"] 
