@@ -27,6 +27,7 @@ interface PicsartConfig {
   domain?: string;
   origin?: string;
   userAgent?: string;
+  analytics?: boolean;
   features?: {
     undoRedoControls?: boolean;
     zoomControls?: boolean;
@@ -143,6 +144,7 @@ export const PicsartEditor = () => {
         userAgent: 'TKDesigner/1.0',
         origin: window.location.origin,
         domain: window.location.hostname,
+        analytics: false,
         features: {
           undoRedoControls: true,
           zoomControls: true,
@@ -347,8 +349,13 @@ export const PicsartEditor = () => {
         style={{ 
           minWidth: '768px', 
           minHeight: '500px',
+          width: '100%',
+          height: '100vh',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
       />
       
