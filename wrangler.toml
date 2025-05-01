@@ -1,18 +1,10 @@
 name = "tkdesigner"
-main = ".next/server/app/api/proxy/sdk/route.js"
+main = "worker/index.ts"
 compatibility_date = "2025-05-01"
 
 [build]
 command = "npm run build"
 
-[site]
-bucket = ".next"
-
-[env.production]
-routes = [
-  { pattern = "tkdesigner.tkweb.workers.dev", custom_domain = true }
-]
-
-[[assets]]
-directory = ".next"
-include = ["**/*"] 
+[[rules]]
+type = "ESModule"
+globs = ["**/*.js"] 
