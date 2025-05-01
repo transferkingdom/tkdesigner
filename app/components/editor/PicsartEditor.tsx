@@ -132,7 +132,7 @@ export const PicsartEditor = () => {
       script.async = true;
 
       // Add proper error handling for CORS issues
-      const handleSDKError = (error: any) => {
+      const handleSDKError = (error: unknown) => {
         console.error('SDK loading error:', error);
         // Try loading from CDN as fallback
         const cdnScript = document.createElement('script');
@@ -150,7 +150,7 @@ export const PicsartEditor = () => {
         document.head.appendChild(cdnScript);
       };
 
-      script.onerror = handleSDKError;
+      script.onerror = (event: Event | string) => handleSDKError(event);
       
       // Add cleanup and error prevention
       let mounted = true;
