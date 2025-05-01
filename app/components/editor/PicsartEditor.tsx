@@ -126,7 +126,7 @@ const PicsartEditor = () => {
           exportType: 'blob',
           mode: 'image',
           theme: 'light',
-          userAgent: 'TKDesigner/1.0',
+          userAgent: 'Mozilla/5.0',
           origin: window.location.origin,
           domain: window.location.hostname,
           analytics: false,
@@ -187,6 +187,17 @@ const PicsartEditor = () => {
           }
 
           try {
+            // SDK script yükleme kontrolü
+            await new Promise<void>((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = 'https://sdk.picsart.io/1.12.4/sdk/picsart.js';
+              script.async = true;
+              script.crossOrigin = 'anonymous';
+              script.onload = () => resolve();
+              script.onerror = () => reject(new Error('Failed to load Picsart SDK'));
+              document.body.appendChild(script);
+            });
+
             const editor = new (window as unknown as PicsartWindow).Picsart(editorSettings);
 
             editor.onOpen(() => {
@@ -198,6 +209,7 @@ const PicsartEditor = () => {
               console.error('Editor error:', error);
               if (error.code === 'AUTH_ERROR' || error.code === '401') {
                 console.error('Authentication error. Please check your API key.');
+                setIsLoading(false);
               } else if (retryCount < maxRetries) {
                 setRetryCount(prev => prev + 1);
                 setTimeout(initEditor, 1000 * (retryCount + 1));

@@ -7,7 +7,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'https://sdk.picsart.io'
+            value: '*'
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -15,7 +15,7 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With'
+            value: '*'
           },
           {
             key: 'Access-Control-Allow-Credentials',
@@ -38,6 +38,10 @@ const nextConfig = {
       {
         source: '/cdn/:path*',
         destination: 'https://cdn.picsart.io/:path*'
+      },
+      {
+        source: '/auth/:path*',
+        destination: 'https://picsart.cloudflareaccess.com/:path*'
       }
     ];
   },
