@@ -26,6 +26,7 @@ interface PicsartConfig {
   theme?: string;
   domain?: string;
   origin?: string;
+  userAgent?: string;
   features?: {
     undoRedoControls?: boolean;
     zoomControls?: boolean;
@@ -132,6 +133,7 @@ export const PicsartEditor = () => {
           exportType: 'blob',
           mode: 'image',
           theme: 'light',
+          userAgent: 'TKDesigner/1.0',
           features: {
             undoRedoControls: true,
             zoomControls: true,

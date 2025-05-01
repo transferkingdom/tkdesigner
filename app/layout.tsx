@@ -29,6 +29,7 @@ export default function RootLayout({
         <Script 
           src="https://sdk.picsart.io/cdn?v=1.12.4&key=sdk"
           strategy="lazyOnload"
+          referrerPolicy="origin"
         />
       </head>
       <body

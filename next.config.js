@@ -7,7 +7,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'https://sdk.picsart.io'
+            value: '*'
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -15,7 +15,15 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'X-Requested-With, Content-Type, Authorization'
+            value: 'X-Requested-With, Content-Type, Authorization, Accept'
+          },
+          {
+            key: 'Accept',
+            value: 'application/json'
+          },
+          {
+            key: 'User-Agent',
+            value: 'TKDesigner/1.0'
           }
         ]
       }
