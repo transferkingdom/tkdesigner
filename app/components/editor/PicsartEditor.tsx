@@ -186,26 +186,36 @@ const PicsartEditor = () => {
             currentEditorRef!.id = 'picsart-editor';
           }
 
-          const editor = new (window as unknown as PicsartWindow).Picsart(editorSettings);
+          try {
+            const editor = new (window as unknown as PicsartWindow).Picsart(editorSettings);
 
-          editor.onOpen(() => {
-            console.log('Editor loaded successfully');
-            setIsLoading(false);
-          });
+            editor.onOpen(() => {
+              console.log('Editor loaded successfully');
+              setIsLoading(false);
+            });
 
-          editor.onError((error: PicsartError) => {
-            console.error('Editor error:', error);
+            editor.onError((error: PicsartError) => {
+              console.error('Editor error:', error);
+              if (error.code === 'AUTH_ERROR' || error.code === '401') {
+                console.error('Authentication error. Please check your API key.');
+              } else if (retryCount < maxRetries) {
+                setRetryCount(prev => prev + 1);
+                setTimeout(initEditor, 1000 * (retryCount + 1));
+              }
+            });
+
+            editor.open({
+              title: 'TK Designer',
+              theme: 'light',
+              quality: 90
+            });
+          } catch (initError) {
+            console.error('Editor initialization error:', initError);
             if (retryCount < maxRetries) {
               setRetryCount(prev => prev + 1);
-              initEditor();
+              setTimeout(initEditor, 1000 * (retryCount + 1));
             }
-          });
-
-          editor.open({
-            title: 'TK Designer',
-            theme: 'light',
-            quality: 90
-          });
+          }
         } else {
           throw new Error('Picsart SDK not loaded properly');
         }
@@ -230,16 +240,21 @@ const PicsartEditor = () => {
   }, [retryCount]);
 
   return (
-    <div className="relative w-full h-full min-h-screen">
+    <div className="relative w-full h-full min-h-screen flex flex-col">
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-50">
           <div className="text-lg font-semibold">Editor yükleniyor...</div>
         </div>
       )}
       <div 
         ref={editorRef} 
-        className="w-full h-full"
-        style={{ minHeight: '100vh' }}
+        className="w-full flex-1"
+        style={{ 
+          minHeight: 'calc(100vh - 60px)',
+          height: 'calc(100vh - 60px)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
       />
     </div>
   );
