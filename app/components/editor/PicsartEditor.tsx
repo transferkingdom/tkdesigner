@@ -78,7 +78,7 @@ interface OpenOptions {
   quality?: number;
 }
 
-const SDK_URL = 'https://sdk.picsart.io/cdn/1.12.4/sdk.js';
+const SDK_URL = '/api/proxy/sdk';
 const CONTAINER_ID = 'picsart-editor-container';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -105,14 +105,15 @@ const PicsartEditor = () => {
           script.async = true;
           script.defer = true;
           script.crossOrigin = 'anonymous';
+          script.integrity = 'sha384-'; // Unpkg'den integrity değerini almalısınız
           script.referrerPolicy = 'no-referrer';
-          script.type = 'text/javascript';
           
           script.onload = () => {
             console.log('SDK script loaded successfully');
             if ((window as unknown as PicsartWindow).Picsart) {
               resolve();
             } else {
+              console.error('SDK loaded but Picsart object not found');
               reject(new Error('SDK loaded but Picsart object not found'));
             }
           };
@@ -125,12 +126,6 @@ const PicsartEditor = () => {
             });
             reject(new Error('Failed to load Picsart SDK'));
           };
-
-          // Remove any existing SDK script
-          const existingScript = document.querySelector(`script[src="${SDK_URL}"]`);
-          if (existingScript) {
-            existingScript.remove();
-          }
 
           document.head.appendChild(script);
         } catch (error) {
