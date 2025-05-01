@@ -124,34 +124,11 @@ export const PicsartEditor = () => {
       const script = document.createElement('script');
       script.id = 'picsart-sdk-script';
       
-      // Update SDK URL and add SameSite attribute
-      script.src = 'https://sdk.picsart.io/cdn?v=2.0.0';
-      script.setAttribute('crossorigin', 'anonymous');
-      script.setAttribute('SameSite', 'None');
-      script.setAttribute('Secure', '');
+      // Update SDK URL with correct parameters
+      script.src = 'https://sdk.picsart.io/cdn?v=2.0.0&key=sdk';
+      script.crossOrigin = 'anonymous';
       script.async = true;
 
-      // Add proper error handling for CORS issues
-      const handleSDKError = (error: unknown) => {
-        console.error('SDK loading error:', error);
-        // Try loading from CDN as fallback
-        const cdnScript = document.createElement('script');
-        cdnScript.src = 'https://cdn.jsdelivr.net/npm/@picsart/sdk@2.0.0/dist/sdk.min.js';
-        cdnScript.crossOrigin = 'anonymous';
-        cdnScript.async = true;
-        cdnScript.onload = () => {
-          if (window.Picsart) {
-            initEditor();
-          } else {
-            enableMockEditorMode();
-          }
-        };
-        cdnScript.onerror = () => enableMockEditorMode();
-        document.head.appendChild(cdnScript);
-      };
-
-      script.onerror = (event: Event | string) => handleSDKError(event);
-      
       // Add cleanup and error prevention
       let mounted = true;
       
@@ -160,44 +137,54 @@ export const PicsartEditor = () => {
         
         if (window.Picsart) {
           try {
-            initEditor();
+            const picsartInstance = new window.Picsart({
+              propertyId: 'tkdesigner',
+              containerId: containerRef.current?.id || 'picsart-editor-container',
+              apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
+              accessibilityTitle: 'TK Designer',
+              debug: true,
+              usePicsartInventory: true
+            });
+
+            picsartInstance.onOpen(() => {
+              console.log('Picsart editor is ready');
+              setIsLoading(false);
+              setEditorInstance(picsartInstance);
+            });
+
+            picsartInstance.open({
+              title: 'TK Designer',
+              theme: 'light',
+              quality: 90,
+              exportFormats: ['image/png', 'image/jpeg'],
+              onError: (error) => {
+                console.error('Editor error:', error);
+                enableMockEditorMode();
+              }
+            });
           } catch (err) {
             console.error('Editor initialization error:', err);
-            handleSDKError(err);
+            enableMockEditorMode();
           }
         } else {
           console.error('Picsart SDK failed to initialize');
-          handleSDKError(new Error('SDK not initialized'));
-        }
-      };
-      
-      // Increase timeout and add retry logic
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      const tryLoadSDK = () => {
-        if (retryCount >= maxRetries) {
-          console.error('Max retries reached, enabling mock editor');
           enableMockEditorMode();
-          return;
-        }
-        
-        if (!mounted) return;
-        
-        if (isLoading) {
-          retryCount++;
-          console.log(`Retry attempt ${retryCount}`);
-          document.head.appendChild(script);
         }
       };
 
-      const timeoutId = setInterval(tryLoadSDK, 5000);
+      script.onerror = () => {
+        if (!mounted) return;
+        console.error('Failed to load Picsart SDK');
+        enableMockEditorMode();
+      };
 
       document.head.appendChild(script);
 
       return () => {
         mounted = false;
-        clearInterval(timeoutId);
+        if (editorInstance) {
+          editorInstance.close();
+        }
         const existingScript = document.getElementById('picsart-sdk-script');
         if (existingScript) {
           existingScript.remove();
