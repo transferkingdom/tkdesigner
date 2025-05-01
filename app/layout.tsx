@@ -30,12 +30,6 @@ export default function RootLayout({
           src="https://sdk.picsart.io/cdn?v=1.12.4&key=sdk"
           strategy="beforeInteractive"
           crossOrigin="anonymous"
-          onError={(e) => {
-            console.error('Error loading Picsart SDK:', e);
-          }}
-          onLoad={() => {
-            console.log('Picsart SDK loaded successfully');
-          }}
         />
       </head>
       <body

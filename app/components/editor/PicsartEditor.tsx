@@ -241,6 +241,7 @@ export const PicsartEditor = () => {
     const waitForSDK = () => {
       checkInterval = setInterval(() => {
         if (window.Picsart) {
+          console.log('Picsart SDK loaded successfully');
           clearInterval(checkInterval);
           clearTimeout(timeoutId);
           initializeEditor();
