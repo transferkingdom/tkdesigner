@@ -76,8 +76,8 @@ export const PicsartEditor = () => {
         containerId: containerRef.current.id,
         apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
         accessibilityTitle: 'TK Designer',
-        debug: true, // Enable debug mode to see more logs
-        usePicsartInventory: true // Enable Picsart inventory
+        debug: true,
+        usePicsartInventory: true
       });
 
       // Add error handling for API key
@@ -101,9 +101,16 @@ export const PicsartEditor = () => {
         // Handle export data here
       });
 
-      // Open the editor
+      // Open the editor with specific configuration
       picsartInstance.open({
-        title: 'TK Designer'
+        title: 'TK Designer',
+        theme: 'light',
+        quality: 90,
+        exportFormats: ['image/png', 'image/jpeg'],
+        onError: (error: Error) => {
+          console.error('Editor error:', error);
+          enableMockEditorMode();
+        }
       });
     } catch (error) {
       console.error('Error initializing Picsart editor:', error);
@@ -121,93 +128,101 @@ export const PicsartEditor = () => {
   }, []);
 
   useEffect(() => {
-    // Load Picsart SDK script
-    const loadPicsartSDK = () => {
-      // Check if script is already loaded
-      if (document.getElementById('picsart-sdk-script')) {
-        initEditor();
+    let timeoutId: NodeJS.Timeout;
+    let checkInterval: NodeJS.Timeout;
+
+    const initializeEditor = () => {
+      if (!containerRef.current || !window.Picsart) {
+        console.error('Container ref is not available or Picsart SDK not loaded');
+        setLoadError(true);
+        setIsLoading(false);
         return;
       }
 
-      const script = document.createElement('script');
-      script.id = 'picsart-sdk-script';
-      
-      // Update SDK URL with correct parameters
-      script.src = 'https://sdk.picsart.io/cdn?v=2.0.0&key=sdk';
-      script.crossOrigin = 'anonymous';
-      script.async = true;
+      try {
+        // Set a unique ID for the container
+        if (!containerRef.current.id) {
+          containerRef.current.id = 'picsart-editor-container';
+        }
 
-      // Add cleanup and error prevention
-      let mounted = true;
-      
-      script.onload = () => {
-        if (!mounted) return;
-        
-        if (window.Picsart) {
-          try {
-            const picsartInstance = new window.Picsart({
-              propertyId: 'tkdesigner',
-              containerId: containerRef.current?.id || 'picsart-editor-container',
-              apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
-              accessibilityTitle: 'TK Designer',
-              debug: true,
-              usePicsartInventory: true
-            });
+        // Create Picsart instance according to documentation
+        const picsartInstance = new window.Picsart({
+          propertyId: 'tkdesigner',
+          containerId: containerRef.current.id,
+          apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
+          accessibilityTitle: 'TK Designer',
+          debug: true,
+          usePicsartInventory: true
+        });
 
-            picsartInstance.onOpen(() => {
-              console.log('Picsart editor is ready');
-              setIsLoading(false);
-              setEditorInstance(picsartInstance);
-            });
+        // Add error handling for API key
+        if (!process.env.NEXT_PUBLIC_PICSART_API_KEY) {
+          console.error('Picsart API key is missing');
+          setLoadError(true);
+          setIsLoading(false);
+          return;
+        }
 
-            picsartInstance.open({
-              title: 'TK Designer',
-              theme: 'light',
-              quality: 90,
-              exportFormats: ['image/png', 'image/jpeg'],
-              onError: (error: Error) => {
-                console.error('Editor error:', error);
-                enableMockEditorMode();
-              }
-            });
-          } catch (err) {
-            console.error('Editor initialization error:', err);
+        // Setup event handlers
+        picsartInstance.onOpen(() => {
+          console.log('Picsart editor is ready');
+          setIsLoading(false);
+          setEditorInstance(picsartInstance);
+        });
+
+        // Handle export events
+        picsartInstance.onExport((output) => {
+          console.log('Export complete:', output);
+          // Handle export data here
+        });
+
+        // Open the editor with specific configuration
+        picsartInstance.open({
+          title: 'TK Designer',
+          theme: 'light',
+          quality: 90,
+          exportFormats: ['image/png', 'image/jpeg'],
+          onError: (error: Error) => {
+            console.error('Editor error:', error);
             enableMockEditorMode();
           }
-        } else {
-          console.error('Picsart SDK failed to initialize');
-          enableMockEditorMode();
-        }
-      };
-
-      script.onerror = () => {
-        if (!mounted) return;
-        console.error('Failed to load Picsart SDK');
-        enableMockEditorMode();
-      };
-
-      document.head.appendChild(script);
-
-      return () => {
-        mounted = false;
-        if (editorInstance) {
-          editorInstance.close();
-        }
-        const existingScript = document.getElementById('picsart-sdk-script');
-        if (existingScript) {
-          existingScript.remove();
-        }
-      };
+        });
+      } catch (error) {
+        console.error('Error initializing Picsart editor:', error);
+        setLoadError(true);
+        setIsLoading(false);
+        setIsMockEditor(true);
+      }
     };
 
-    loadPicsartSDK();
+    // Check for SDK availability
+    const waitForSDK = () => {
+      checkInterval = setInterval(() => {
+        if (window.Picsart) {
+          clearInterval(checkInterval);
+          clearTimeout(timeoutId);
+          initializeEditor();
+        }
+      }, 500);
+
+      // Set timeout for SDK loading
+      timeoutId = setTimeout(() => {
+        clearInterval(checkInterval);
+        console.error('Picsart SDK failed to load after timeout');
+        enableMockEditorMode();
+      }, 10000);
+    };
+
+    waitForSDK();
 
     return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeoutId);
       if (editorInstance) {
         editorInstance.close();
       }
     };
-  }, [editorInstance, initEditor, enableMockEditorMode, isLoading]);
+  }, [editorInstance, enableMockEditorMode]);
 
   // Render a mock editor UI for testing when the SDK fails to load
   const renderMockEditor = () => {
