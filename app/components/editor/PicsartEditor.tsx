@@ -78,7 +78,7 @@ interface OpenOptions {
   quality?: number;
 }
 
-const SDK_URL = 'https://sdk.picsart.io/cdn?v=1.12.4&key=sdk';
+const SDK_URL = 'https://sdk.picsart.io/cdn/1.12.4/sdk.js';
 const CONTAINER_ID = 'picsart-editor-container';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -93,45 +93,71 @@ const PicsartEditor = () => {
     
     const loadSDK = async (): Promise<void> => {
       return new Promise((resolve, reject) => {
-        if ((window as unknown as PicsartWindow).Picsart) {
-          resolve();
-          return;
-        }
+        try {
+          if ((window as unknown as PicsartWindow).Picsart) {
+            console.log('SDK already loaded');
+            resolve();
+            return;
+          }
 
-        const script = document.createElement('script');
-        script.src = SDK_URL;
-        script.async = true;
-        script.crossOrigin = 'anonymous';
-        script.onload = () => {
-          console.log('SDK script loaded successfully');
-          resolve();
-        };
-        script.onerror = (error) => {
-          console.error('Failed to load SDK script:', error);
-          reject(new Error(`Failed to load Picsart SDK: ${error}`));
-        };
-        document.head.appendChild(script);
+          const script = document.createElement('script');
+          script.src = SDK_URL;
+          script.async = true;
+          script.defer = true;
+          script.crossOrigin = 'anonymous';
+          script.referrerPolicy = 'no-referrer';
+          script.type = 'text/javascript';
+          
+          script.onload = () => {
+            console.log('SDK script loaded successfully');
+            if ((window as unknown as PicsartWindow).Picsart) {
+              resolve();
+            } else {
+              reject(new Error('SDK loaded but Picsart object not found'));
+            }
+          };
+          
+          script.onerror = (error) => {
+            console.error('Failed to load SDK script. Details:', {
+              error,
+              url: SDK_URL,
+              windowPicsart: !!(window as unknown as PicsartWindow).Picsart
+            });
+            reject(new Error('Failed to load Picsart SDK'));
+          };
+
+          // Remove any existing SDK script
+          const existingScript = document.querySelector(`script[src="${SDK_URL}"]`);
+          if (existingScript) {
+            existingScript.remove();
+          }
+
+          document.head.appendChild(script);
+        } catch (error) {
+          console.error('Error in loadSDK:', error);
+          reject(error);
+        }
       });
     };
 
     const initEditor = async () => {
       try {
         setIsLoading(true);
-        console.log('Checking if SDK is loaded...');
+        console.log('Starting editor initialization...');
 
         await loadSDK();
-        console.log('Picsart SDK loaded successfully');
-
+        
         // API Key kontrolü
         const apiKey = process.env.NEXT_PUBLIC_PICSART_API_KEY;
         if (!apiKey) {
-          throw new Error('API Key not found');
+          throw new Error('API Key not found in environment variables');
         }
-        console.log('API Key available:', !!apiKey);
+        console.log('API Key validation successful');
 
         // Container ID'sini ayarla
         if (currentEditorRef && !currentEditorRef.id) {
           currentEditorRef.id = CONTAINER_ID;
+          console.log('Container ID set:', CONTAINER_ID);
         }
 
         // Editor ayarları
@@ -146,7 +172,7 @@ const PicsartEditor = () => {
           exportType: 'blob',
           mode: 'image',
           theme: 'light',
-          userAgent: 'Mozilla/5.0',
+          userAgent: navigator.userAgent,
           origin: window.location.origin,
           domain: window.location.hostname,
           analytics: false,
@@ -199,37 +225,43 @@ const PicsartEditor = () => {
           }
         };
 
+        console.log('Editor settings prepared:', { containerId: editorSettings.containerId, mode: editorSettings.mode });
+
         // Editor başlatma
-        if ((window as unknown as PicsartWindow).Picsart) {
-          const editor = new (window as unknown as PicsartWindow).Picsart(editorSettings);
-
-          editor.onOpen(() => {
-            console.log('Editor loaded successfully');
-            setIsLoading(false);
-          });
-
-          editor.onError((error: PicsartError) => {
-            console.error('Editor error:', error);
-            if (error.code === 'AUTH_ERROR' || error.code === '401') {
-              console.error('Authentication error. Please check your API key.');
-              setIsLoading(false);
-            } else if (retryCount < MAX_RETRIES) {
-              setRetryCount(prev => prev + 1);
-              setTimeout(initEditor, RETRY_DELAY * (retryCount + 1));
-            }
-          });
-
-          editor.open({
-            title: 'TK Designer',
-            theme: 'light',
-            quality: 90
-          });
-        } else {
-          throw new Error('Picsart SDK not loaded properly');
+        if (!(window as unknown as PicsartWindow).Picsart) {
+          throw new Error('Picsart SDK not found after loading');
         }
+
+        const editor = new (window as unknown as PicsartWindow).Picsart(editorSettings);
+        console.log('Editor instance created');
+
+        editor.onOpen(() => {
+          console.log('Editor opened successfully');
+          setIsLoading(false);
+        });
+
+        editor.onError((error: PicsartError) => {
+          console.error('Editor error:', error);
+          if (error.code === 'AUTH_ERROR' || error.code === '401') {
+            console.error('Authentication error. API key may be invalid.');
+            setIsLoading(false);
+          } else if (retryCount < MAX_RETRIES) {
+            console.log(`Retrying initialization (${retryCount + 1}/${MAX_RETRIES})`);
+            setRetryCount(prev => prev + 1);
+            setTimeout(initEditor, RETRY_DELAY * (retryCount + 1));
+          }
+        });
+
+        editor.open({
+          title: 'TK Designer',
+          theme: 'light',
+          quality: 90
+        });
+        
       } catch (error) {
         console.error('Editor initialization error:', error);
         if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying initialization (${retryCount + 1}/${MAX_RETRIES})`);
           setRetryCount(prev => prev + 1);
           setTimeout(initEditor, RETRY_DELAY * (retryCount + 1));
         } else {

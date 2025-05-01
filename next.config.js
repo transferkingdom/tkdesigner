@@ -7,7 +7,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'https://sdk.picsart.io'
+            value: '*'
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -15,7 +15,7 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With'
+            value: '*'
           },
           {
             key: 'Access-Control-Allow-Credentials',
@@ -23,19 +23,15 @@ const nextConfig = {
           },
           {
             key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin'
+            value: 'same-origin-allow-popups'
           },
           {
             key: 'Cross-Origin-Embedder-Policy',
-            value: 'require-corp'
+            value: 'credentialless'
           },
           {
             key: 'Cross-Origin-Resource-Policy',
-            value: 'same-site'
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self' https://sdk.picsart.io; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.picsart.io; style-src 'self' 'unsafe-inline' https://sdk.picsart.io; img-src 'self' data: https://*.picsart.io; connect-src 'self' https://*.picsart.io;"
+            value: 'cross-origin'
           }
         ]
       }
