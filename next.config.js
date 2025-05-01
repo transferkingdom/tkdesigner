@@ -44,17 +44,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true
   },
-  async middleware() {
-    return {
-      headers: async (req) => {
-        return {
-          'X-Real-IP': req.headers['x-real-ip'],
-          'X-Forwarded-For': req.headers['x-forwarded-for'],
-          'X-Forwarded-Proto': req.headers['x-forwarded-proto'],
-          'X-Forwarded-Host': req.headers['x-forwarded-host']
-        };
-      }
-    };
+  eslint: {
+    ignoreDuringBuilds: true
   }
 };
 

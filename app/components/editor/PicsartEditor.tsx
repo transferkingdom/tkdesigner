@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { EditorControls } from './EditorControls';
 
-// Define proper types for the Picsart SDK
-declare global {
-  interface Window {
-    Picsart: {
-      new(config: PicsartConfig): PicsartInstance;
-    };
-  }
+// Types
+interface PicsartSDK {
+  new(config: PicsartConfig): PicsartInstance;
+}
+
+interface PicsartWindow extends Window {
+  Picsart: PicsartSDK;
 }
 
 interface PicsartConfig {
@@ -61,30 +61,22 @@ interface PicsartConfig {
   };
 }
 
-interface ExportOutput {
-  data: {
-    imageData?: string;
-    pdfData?: string;
-    printData?: string;
-    previewPdfData?: string;
-    replayData?: string;
-  };
-}
-
-interface OpenOptions {
-  title?: string;
-  theme?: 'light' | 'dark';
-  quality?: number;
-  exportFormats?: string[];
-  onError?: (error: Error) => void;
+interface PicsartError extends Error {
+  code?: string;
+  details?: unknown;
 }
 
 interface PicsartInstance {
   open: (options?: OpenOptions) => void;
   close: () => void;
   onOpen: (callback: () => void) => void;
-  onExport: (callback: (output: ExportOutput) => void) => void;
-  export: (options: { format: string; quality: number; transparent: boolean }) => Promise<string>;
+  onError: (callback: (error: PicsartError) => void) => void;
+}
+
+interface OpenOptions {
+  title?: string;
+  theme?: 'light' | 'dark';
+  quality?: number;
 }
 
 const PicsartEditor = () => {
@@ -94,13 +86,15 @@ const PicsartEditor = () => {
   const maxRetries = 3;
 
   useEffect(() => {
+    const currentEditorRef = editorRef.current;
+    
     const initEditor = async () => {
       try {
         setIsLoading(true);
         console.log('Checking if SDK is loaded...');
 
         // SDK yükleme kontrolü
-        if (!(window as any).Picsart) {
+        if (!(window as unknown as PicsartWindow).Picsart) {
           const script = document.createElement('script');
           script.src = 'https://sdk.picsart.io/1.12.4/sdk/picsart.js';
           script.async = true;
@@ -121,9 +115,9 @@ const PicsartEditor = () => {
         console.log('API Key available:', !!apiKey);
 
         // Editor ayarları
-        const editorSettings = {
+        const editorSettings: PicsartConfig = {
           propertyId: 'tkdesigner',
-          containerId: editorRef.current?.id || 'picsart-editor',
+          containerId: currentEditorRef?.id || 'picsart-editor',
           apiKey,
           accessibilityTitle: 'TK Designer',
           debug: true,
@@ -186,20 +180,20 @@ const PicsartEditor = () => {
         };
 
         // Editor başlatma
-        if ((window as any).Picsart) {
+        if ((window as unknown as PicsartWindow).Picsart) {
           // Container ID'sini ayarla
-          if (!editorRef.current?.id) {
-            editorRef.current!.id = 'picsart-editor';
+          if (!currentEditorRef?.id) {
+            currentEditorRef!.id = 'picsart-editor';
           }
 
-          const editor = new (window as any).Picsart(editorSettings);
+          const editor = new (window as unknown as PicsartWindow).Picsart(editorSettings);
 
           editor.onOpen(() => {
             console.log('Editor loaded successfully');
             setIsLoading(false);
           });
 
-          editor.onError((error: any) => {
+          editor.onError((error: PicsartError) => {
             console.error('Editor error:', error);
             if (retryCount < maxRetries) {
               setRetryCount(prev => prev + 1);
@@ -229,8 +223,8 @@ const PicsartEditor = () => {
 
     return () => {
       // Cleanup
-      if (editorRef.current) {
-        editorRef.current.innerHTML = '';
+      if (currentEditorRef) {
+        currentEditorRef.innerHTML = '';
       }
     };
   }, [retryCount]);
