@@ -28,8 +28,7 @@ export default function RootLayout({
       <head>
         <Script 
           src="https://sdk.picsart.io/cdn?v=1.12.4&key=sdk"
-          strategy="beforeInteractive"
-          crossOrigin="anonymous"
+          strategy="lazyOnload"
         />
       </head>
       <body

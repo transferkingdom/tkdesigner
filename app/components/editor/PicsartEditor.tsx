@@ -239,21 +239,24 @@ export const PicsartEditor = () => {
 
     // Check for SDK availability
     const waitForSDK = () => {
+      console.log('Waiting for Picsart SDK to load...');
+      
       checkInterval = setInterval(() => {
+        console.log('Checking if SDK is loaded...');
         if (window.Picsart) {
           console.log('Picsart SDK loaded successfully');
           clearInterval(checkInterval);
           clearTimeout(timeoutId);
           initializeEditor();
         }
-      }, 500);
+      }, 1000);
 
       // Set timeout for SDK loading
       timeoutId = setTimeout(() => {
         clearInterval(checkInterval);
         console.error('Picsart SDK failed to load after timeout');
         enableMockEditorMode();
-      }, 10000);
+      }, 20000); // Increased timeout to 20 seconds
     };
 
     waitForSDK();
