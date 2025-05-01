@@ -27,7 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <Script 
-          src="https://sdk.picsart.io/cdn?v=2.0.0&key=sdk"
+          src="https://sdk.picsart.io/cdn?v=1.12.4&key=sdk"
           strategy="beforeInteractive"
           crossOrigin="anonymous"
         />

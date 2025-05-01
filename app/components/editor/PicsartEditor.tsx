@@ -20,6 +20,41 @@ interface PicsartConfig {
   logo?: string;
   usePicsartInventory?: boolean;
   debug?: boolean;
+  exportFormats?: string[];
+  exportType?: string;
+  mode?: string;
+  theme?: string;
+  features?: {
+    undoRedoControls?: boolean;
+    zoomControls?: boolean;
+    tools?: string[];
+  };
+  categories?: {
+    templates?: {};
+    photos?: {
+      thumbnailHeader?: boolean;
+    };
+    text?: {
+      title?: boolean;
+    };
+    uploads?: {
+      title?: boolean;
+    };
+    elements?: {
+      smallTitle?: boolean;
+    };
+    background?: {
+      header?: boolean;
+      tabs?: string[];
+    };
+  };
+  branding?: {
+    accents?: string;
+    hover?: string;
+    main?: string;
+    texts?: string;
+    background?: string;
+  };
 }
 
 interface ExportOutput {
@@ -87,7 +122,58 @@ export const PicsartEditor = () => {
           apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY,
           accessibilityTitle: 'TK Designer',
           debug: true,
-          usePicsartInventory: true
+          usePicsartInventory: true,
+          exportFormats: ['image/png', 'image/jpeg'],
+          exportType: 'blob',
+          mode: 'image',
+          theme: 'light',
+          features: {
+            undoRedoControls: true,
+            zoomControls: true,
+            tools: [
+              'effects',
+              'eraser',
+              'duplicate',
+              'adjust',
+              'edit',
+              'color',
+              'gradient',
+              'font',
+              'border',
+              'outline',
+              'shadow',
+              'crop',
+              'flip_rotate',
+              'position',
+              'tool_removeBG'
+            ],
+          },
+          categories: {
+            templates: {},
+            photos: {
+              thumbnailHeader: false,
+            },
+            text: {
+              title: false,
+            },
+            uploads: {
+              title: false,
+            },
+            elements: {
+              smallTitle: true,
+            },
+            background: {
+              header: false,
+              tabs: ['Color']
+            },
+          },
+          branding: {
+            accents: '#eec443',
+            hover: '#eed792',
+            main: '#1f3b5e',
+            texts: '#ffffff',
+            background: '#0a1e37',
+          }
         });
 
         // Add error handling for API key
@@ -108,19 +194,25 @@ export const PicsartEditor = () => {
         // Handle export events
         picsartInstance.onExport((output) => {
           console.log('Export complete:', output);
-          // Handle export data here
+          if (output.data.imageData) {
+            const blob = new Blob([output.data.imageData], { type: 'image/png' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'edited-image.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }
         });
 
         // Open the editor with specific configuration
         picsartInstance.open({
           title: 'TK Designer',
-          theme: 'light',
-          quality: 90,
-          exportFormats: ['image/png', 'image/jpeg'],
-          onError: (error: Error) => {
-            console.error('Editor error:', error);
-            enableMockEditorMode();
-          }
+          selectedTool: 'templates',
+          measurement: 'pixel',
+          quality: 90
         });
       } catch (error) {
         console.error('Error initializing Picsart editor:', error);
