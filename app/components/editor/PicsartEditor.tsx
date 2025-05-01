@@ -103,6 +103,128 @@ export const PicsartEditor = () => {
     setIsLoading(false);
   }, []);
 
+  const initializeEditor = useCallback(async () => {
+    if (!containerRef.current || !window.Picsart) {
+      console.error('Container ref is not available or Picsart SDK not loaded');
+      setLoadError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Set a unique ID for the container
+      if (!containerRef.current.id) {
+        containerRef.current.id = 'picsart-editor-container';
+      }
+
+      // Debug API key
+      console.log('API Key:', process.env.NEXT_PUBLIC_PICSART_API_KEY);
+
+      // Create Picsart instance according to documentation
+      const picsartInstance = new window.Picsart({
+        propertyId: 'tkdesigner',
+        containerId: containerRef.current.id,
+        apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
+        accessibilityTitle: 'TK Designer',
+        debug: true,
+        usePicsartInventory: true,
+        exportFormats: ['image/png', 'image/jpeg'],
+        exportType: 'blob',
+        mode: 'image',
+        theme: 'light',
+        userAgent: 'TKDesigner/1.0',
+        features: {
+          undoRedoControls: true,
+          zoomControls: true,
+          tools: [
+            'effects',
+            'eraser',
+            'duplicate',
+            'adjust',
+            'edit',
+            'color',
+            'gradient',
+            'font',
+            'border',
+            'outline',
+            'shadow',
+            'crop',
+            'flip_rotate',
+            'position',
+            'tool_removeBG'
+          ],
+        },
+        categories: {
+          templates: {},
+          photos: {
+            thumbnailHeader: false,
+          },
+          text: {
+            title: false,
+          },
+          uploads: {
+            title: false,
+          },
+          elements: {
+            smallTitle: true,
+          },
+          background: {
+            header: false,
+            tabs: ['Color']
+          },
+        },
+        branding: {
+          accents: '#eec443',
+          hover: '#eed792',
+          main: '#1f3b5e',
+          texts: '#ffffff',
+          background: '#0a1e37',
+        }
+      });
+
+      // Add error handling for API key
+      if (!process.env.NEXT_PUBLIC_PICSART_API_KEY) {
+        console.error('Picsart API key is missing');
+        setLoadError(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Setup event handlers
+      picsartInstance.onOpen(() => {
+        console.log('Picsart editor is ready');
+        setIsLoading(false);
+        setEditorInstance(picsartInstance);
+      });
+
+      // Handle export events
+      picsartInstance.onExport((output) => {
+        console.log('Export complete:', output);
+        if (output.data.imageData) {
+          const blob = new Blob([output.data.imageData], { type: 'image/png' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'edited-image.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      });
+
+      // Open the editor with specific configuration
+      picsartInstance.open({
+        title: 'TK Designer',
+        theme: 'light',
+        quality: 90
+      });
+    } catch (error) {
+      console.error('Error initializing Picsart editor:', error);
+      throw error;
+    }
+  }, []);
+
   const initializeWithRetry = useCallback(async () => {
     if (retryCount >= MAX_RETRIES) {
       console.error('Max retries reached, enabling mock editor');
@@ -117,150 +239,14 @@ export const PicsartEditor = () => {
       setRetryCount(prev => prev + 1);
       setTimeout(() => {
         initializeWithRetry();
-      }, INITIAL_RETRY_DELAY * Math.pow(2, retryCount)); // Exponential backoff
+      }, INITIAL_RETRY_DELAY * Math.pow(2, retryCount));
     }
-  }, [retryCount, enableMockEditorMode]);
+  }, [retryCount, enableMockEditorMode, initializeEditor, MAX_RETRIES, INITIAL_RETRY_DELAY]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let checkInterval: NodeJS.Timeout;
 
-    const initializeEditor = async () => {
-      if (!containerRef.current || !window.Picsart) {
-        console.error('Container ref is not available or Picsart SDK not loaded');
-        setLoadError(true);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Set a unique ID for the container
-        if (!containerRef.current.id) {
-          containerRef.current.id = 'picsart-editor-container';
-        }
-
-        // Debug API key
-        console.log('API Key:', process.env.NEXT_PUBLIC_PICSART_API_KEY);
-
-        // Create Picsart instance according to documentation
-        const picsartInstance = new window.Picsart({
-          propertyId: 'tkdesigner',
-          containerId: containerRef.current.id,
-          apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
-          accessibilityTitle: 'TK Designer',
-          debug: true,
-          usePicsartInventory: true,
-          exportFormats: ['image/png', 'image/jpeg'],
-          exportType: 'blob',
-          mode: 'image',
-          theme: 'light',
-          userAgent: 'TKDesigner/1.0',
-          features: {
-            undoRedoControls: true,
-            zoomControls: true,
-            tools: [
-              'effects',
-              'eraser',
-              'duplicate',
-              'adjust',
-              'edit',
-              'color',
-              'gradient',
-              'font',
-              'border',
-              'outline',
-              'shadow',
-              'crop',
-              'flip_rotate',
-              'position',
-              'tool_removeBG'
-            ],
-          },
-          categories: {
-            templates: {},
-            photos: {
-              thumbnailHeader: false,
-            },
-            text: {
-              title: false,
-            },
-            uploads: {
-              title: false,
-            },
-            elements: {
-              smallTitle: true,
-            },
-            background: {
-              header: false,
-              tabs: ['Color']
-            },
-          },
-          branding: {
-            accents: '#eec443',
-            hover: '#eed792',
-            main: '#1f3b5e',
-            texts: '#ffffff',
-            background: '#0a1e37',
-          }
-        });
-
-        // Add error handling for API key
-        if (!process.env.NEXT_PUBLIC_PICSART_API_KEY) {
-          console.error('Picsart API key is missing');
-          setLoadError(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Setup event handlers with error handling
-        picsartInstance.onOpen(() => {
-          console.log('Picsart editor is ready');
-          setIsLoading(false);
-          setEditorInstance(picsartInstance);
-        });
-
-        // Handle export events
-        picsartInstance.onExport((output) => {
-          console.log('Export complete:', output);
-          if (output.data.imageData) {
-            const blob = new Blob([output.data.imageData], { type: 'image/png' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'edited-image.png';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }
-        });
-
-        // Open the editor with specific configuration and error handling
-        try {
-          picsartInstance.open({
-            title: 'TK Designer',
-            theme: 'light',
-            quality: 90,
-            onError: (error) => {
-              console.error('Error opening editor:', error);
-              setLoadError(true);
-              setIsLoading(false);
-            }
-          });
-        } catch (error) {
-          console.error('Error opening Picsart editor:', error);
-          setLoadError(true);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Error initializing Picsart editor:', error);
-        setLoadError(true);
-        setIsLoading(false);
-        setIsMockEditor(true);
-      }
-    };
-
-    // Check for SDK availability
     const waitForSDK = () => {
       console.log('Waiting for Picsart SDK to load...');
       
@@ -272,14 +258,13 @@ export const PicsartEditor = () => {
           clearTimeout(timeoutId);
           initializeWithRetry();
         }
-      }, 2000); // Increased interval to 2 seconds
+      }, 2000);
 
-      // Set timeout for SDK loading
       timeoutId = setTimeout(() => {
         clearInterval(checkInterval);
         console.error('Picsart SDK failed to load after timeout');
         enableMockEditorMode();
-      }, 30000); // Increased timeout to 30 seconds
+      }, 30000);
     };
 
     waitForSDK();
