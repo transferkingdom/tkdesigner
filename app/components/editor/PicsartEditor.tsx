@@ -124,12 +124,34 @@ export const PicsartEditor = () => {
       const script = document.createElement('script');
       script.id = 'picsart-sdk-script';
       
-      // Update SDK URL with correct version and configuration
+      // Update SDK URL and add SameSite attribute
       script.src = 'https://sdk.picsart.io/cdn?v=2.0.0';
-      
-      script.crossOrigin = 'anonymous';
+      script.setAttribute('crossorigin', 'anonymous');
+      script.setAttribute('SameSite', 'None');
+      script.setAttribute('Secure', '');
       script.async = true;
 
+      // Add proper error handling for CORS issues
+      const handleSDKError = (error: any) => {
+        console.error('SDK loading error:', error);
+        // Try loading from CDN as fallback
+        const cdnScript = document.createElement('script');
+        cdnScript.src = 'https://cdn.jsdelivr.net/npm/@picsart/sdk@2.0.0/dist/sdk.min.js';
+        cdnScript.crossOrigin = 'anonymous';
+        cdnScript.async = true;
+        cdnScript.onload = () => {
+          if (window.Picsart) {
+            initEditor();
+          } else {
+            enableMockEditorMode();
+          }
+        };
+        cdnScript.onerror = () => enableMockEditorMode();
+        document.head.appendChild(cdnScript);
+      };
+
+      script.onerror = handleSDKError;
+      
       // Add cleanup and error prevention
       let mounted = true;
       
@@ -141,34 +163,41 @@ export const PicsartEditor = () => {
             initEditor();
           } catch (err) {
             console.error('Editor initialization error:', err);
-            enableMockEditorMode();
+            handleSDKError(err);
           }
         } else {
           console.error('Picsart SDK failed to initialize');
-          enableMockEditorMode();
+          handleSDKError(new Error('SDK not initialized'));
         }
       };
       
-      script.onerror = (error) => {
-        if (!mounted) return;
-        console.error('Failed to load Picsart SDK:', error);
-        enableMockEditorMode();
-      };
+      // Increase timeout and add retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
       
-      // Increase timeout for slower connections
-      const timeoutId = setTimeout(() => {
+      const tryLoadSDK = () => {
+        if (retryCount >= maxRetries) {
+          console.error('Max retries reached, enabling mock editor');
+          enableMockEditorMode();
+          return;
+        }
+        
         if (!mounted) return;
+        
         if (isLoading) {
-          console.error('Picsart SDK load timeout');
-          enableMockEditorMode();
+          retryCount++;
+          console.log(`Retry attempt ${retryCount}`);
+          document.head.appendChild(script);
         }
-      }, 10000);
+      };
+
+      const timeoutId = setInterval(tryLoadSDK, 5000);
 
       document.head.appendChild(script);
 
       return () => {
         mounted = false;
-        clearTimeout(timeoutId);
+        clearInterval(timeoutId);
         const existingScript = document.getElementById('picsart-sdk-script');
         if (existingScript) {
           existingScript.remove();
