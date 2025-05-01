@@ -118,13 +118,21 @@ export const PicsartEditor = () => {
       }
 
       // Debug API key
-      console.log('API Key:', process.env.NEXT_PUBLIC_PICSART_API_KEY);
+      const apiKey = process.env.NEXT_PUBLIC_PICSART_API_KEY;
+      console.log('API Key available:', !!apiKey);
+
+      if (!apiKey) {
+        console.error('Picsart API key is missing');
+        setLoadError(true);
+        setIsLoading(false);
+        return;
+      }
 
       // Create Picsart instance according to documentation
       const picsartInstance = new window.Picsart({
         propertyId: 'tkdesigner',
         containerId: containerRef.current.id,
-        apiKey: process.env.NEXT_PUBLIC_PICSART_API_KEY || '',
+        apiKey,
         accessibilityTitle: 'TK Designer',
         debug: true,
         usePicsartInventory: true,
@@ -133,6 +141,8 @@ export const PicsartEditor = () => {
         mode: 'image',
         theme: 'light',
         userAgent: 'TKDesigner/1.0',
+        origin: window.location.origin,
+        domain: window.location.hostname,
         features: {
           undoRedoControls: true,
           zoomControls: true,
@@ -181,14 +191,6 @@ export const PicsartEditor = () => {
           background: '#0a1e37',
         }
       });
-
-      // Add error handling for API key
-      if (!process.env.NEXT_PUBLIC_PICSART_API_KEY) {
-        console.error('Picsart API key is missing');
-        setLoadError(true);
-        setIsLoading(false);
-        return;
-      }
 
       // Setup event handlers
       picsartInstance.onOpen(() => {
@@ -342,7 +344,12 @@ export const PicsartEditor = () => {
         ref={containerRef} 
         id="picsart-editor-container" 
         className={`w-full h-full ${(loadError || isMockEditor) ? 'hidden' : ''}`}
-        style={{ minWidth: '768px', minHeight: '350px' }}
+        style={{ 
+          minWidth: '768px', 
+          minHeight: '500px',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
       />
       
       {isMockEditor && renderMockEditor()}
