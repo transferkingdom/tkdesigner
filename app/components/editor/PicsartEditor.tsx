@@ -79,7 +79,7 @@ interface OpenOptions {
   quality?: number;
 }
 
-const SDK_URL = 'https://sdk.picsart.io/sdk/picsart.js';
+const SDK_URL = 'https://sdk.picsart.io/cdn?v=1.0.0&key=sdk';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
@@ -104,7 +104,7 @@ const PicsartEditor = () => {
         script.crossOrigin = 'anonymous';
         script.onload = () => resolve();
         script.onerror = () => reject(new Error('Failed to load Picsart SDK'));
-        document.body.appendChild(script);
+        document.head.appendChild(script);
       });
     };
 
@@ -131,7 +131,7 @@ const PicsartEditor = () => {
         // Editor ayarları
         const editorSettings: PicsartConfig = {
           propertyId: 'tkdesigner',
-          containerId: currentEditorRef.id,
+          containerId: currentEditorRef!.id,
           apiKey,
           accessibilityTitle: 'TK Designer',
           debug: true,
